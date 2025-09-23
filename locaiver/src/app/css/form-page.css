@@ -1,0 +1,195 @@
+/* ===== FormPage scoped tweaks ===== */
+
+/* フォントは既存のグローバル設定を利用想定。必要なら以下を有効化
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&display=swap');
+*/
+
+:root {
+  /* 既存のテーマ変数を尊重しつつ、フォーム向けコントラストを微調整 */
+  --bg: #fffdf8;
+  --bg-accent: #fff7e8;
+  --surface: #ffffff;
+  --border: #eadfc8;
+  --text: #3a3a39;
+  --muted: #7a7a73;
+  --primary: #6fb96a;
+  --primary-ink: #0f2d0e;
+  --accent: #73a7e3;
+  --accent-2: #f3be5f;
+  --danger: #d66a6a;
+
+  --radius-xl: 20px;
+  --radius-lg: 16px;
+  --radius-md: 12px;
+
+  --shadow-sm: 0 2px 10px rgba(25, 60, 30, 0.06);
+  --shadow-md: 0 6px 24px rgba(25, 60, 30, 0.08);
+  --shadow-lg: 0 12px 32px rgba(25, 60, 30, 0.12);
+
+  --focus-ring: 0 0 0 4px rgba(111,185,106,0.16);
+}
+
+/* 背景はグローバルに任せる想定。フォームのレイアウト密度だけ最適化 */
+.container {
+  max-width: 880px;
+  margin: 24px auto;
+  padding: 0 16px;
+}
+
+/* 見出し：読みやすさと「最初の一歩」の安心感 */
+.pageTitle {
+  margin: 0 0 10px;
+  color: var(--primary-ink);
+  font-weight: 700;
+  font-size: clamp(22px, 2.8vw, 28px);
+  letter-spacing: 0.2px;
+}
+
+/* カードの余白・陰影を微調整（操作面の視線固定） */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+  padding: 16px;
+}
+.card.slim { margin-top: 12px; padding: 12px 14px; }
+
+/* フォームのグリッド：モバイル1列→デスクトップ2列 */
+.formGrid {
+  display: grid;
+  gap: 16px;
+  max-width: 640px;
+}
+@media (min-width: 720px) {
+  .formGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+  /* テキストエリアのブロックはワイドに */
+  .formGrid > div:nth-child(4) { grid-column: 1 / -1; }
+  /* ボタン行もワイド */
+  .row.end { grid-column: 1 / -1; }
+}
+
+/* ラベル・補助テキスト */
+.label {
+  display: block;
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+.muted { color: var(--muted); }
+
+/* 入力系（hover/focusのアクセシビリティ向上） */
+.input, .textarea, select {
+  width: 100%;
+  background: #fff;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  outline: none;
+  transition: border .18s ease, box-shadow .18s ease, background .18s ease;
+}
+.input:hover, .textarea:hover, select:hover {
+  background: #fffef9;
+}
+.input:focus, .textarea:focus, select:focus {
+  border-color: var(--primary);
+  box-shadow: var(--focus-ring);
+}
+.textarea {
+  min-height: 110px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+/* 行レイアウト */
+.row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.row.end { justify-content: flex-end; }
+@media (max-width: 640px) {
+  .row { flex-direction: column; align-items: stretch; }
+}
+
+/* ラジオ：チップ風（ヒットエリア拡大＆状態が視覚で分かる） */
+.radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  user-select: none;
+  transition: background .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+.radio:hover {
+  background: #fffef9;
+  border-color: #e6dbbf;
+}
+.radio input {
+  display: none; /* ネイティブUIは隠し、spanで視覚状態を表示 */
+}
+.chip {
+  font-size: 13px;
+  letter-spacing: .2px;
+}
+
+/* 文字数カウンタ：通常は控えめ、超過で強調 */
+.counter {
+  margin-top: 6px;
+  font-size: 12px;
+}
+.counter.muted { color: var(--muted); }
+.counter.danger { color: var(--danger); }
+
+/* ボタン：主要/ゴーストで階層を明確に */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(160deg, var(--primary) 0%, #8fd58a 100%);
+  color: #fff;
+  border: 1px solid #79c475;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: transform .04s ease, box-shadow .18s ease, filter .18s ease, opacity .18s ease;
+  text-decoration: none;
+}
+.btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); filter: brightness(1.02); }
+.btn:active { transform: translateY(0); }
+.btn:disabled { opacity: .6; cursor: not-allowed; }
+
+.btn--ghost {
+  background: #fff;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.btn--ghost:hover {
+  background: #fffef9;
+  border-color: #e6dbbf;
+}
+
+/* 結果の表示：読みやすい等幅で囲いを強化 */
+.result {
+  white-space: pre-wrap;
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace;
+  font-size: 12px;
+  color: #2b2b2b;
+  background: #fffef9;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+}
