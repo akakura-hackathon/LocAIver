@@ -1,0 +1,9 @@
+# 送らないもの
+node_modules
+.next
+out
+.git
+.gitignore
+npm-debug.log
+*.log
+.env*
