@@ -1,0 +1,1 @@
+web: gunicorn -w 2 -b :$PORT app:app --timeout 3000 --log-level debug
