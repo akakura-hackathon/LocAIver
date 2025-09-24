@@ -188,12 +188,23 @@ def video():
     data = request.get_json(silent=True) or {}
     
     project_folder = data.get("project_folder", "")
+    num = data.get("num", None)
+
+    if num is None:
+        return {"error": "num が指定されていません"}, 400
+
+    num = int(num)  # 念のためキャスト
 
     print("create_video start")
-    veo_utils.main(project_folder)
+    result = veo_utils.main(project_folder, num)  # "success" or "complete" が返る
     print("create_video end")
 
-    return gcs_utils.generate_signed_url(project_folder + "result/result.mp4",60)
+    if result == "success":
+        return "success"
+    elif result == "complete":
+        return gcs_utils.generate_signed_url(project_folder + "result/result.mp4", 60)
+    else:
+        return {"error": f"予期しない戻り値: {result}"}, 500
 
 
 if __name__ == "__main__":

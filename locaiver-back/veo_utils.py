@@ -176,7 +176,15 @@ def generate_video_with_retry(i, input_image, prompt, output_gcs_uri, project_fo
 
 
 # ===== main =====
-def main(project_folder):
+def main(project_folder, num):
+    """
+    num:
+      0~3 -> 対応する1本の映像のみ生成 → "success" を返す
+      4    -> GCSから動画取得→結合→BGM生成→マージ→アップロード → "complete" を返す
+    """
+    if not isinstance(num, int) or num < 0 or num > 4:
+        raise ValueError("num は 0〜4 の整数で指定してください。")
+
     bucket_name = BUCKET_NAME
     project = GOOGLE_CLOUD_PROJECT
     location = "us-central1"
@@ -187,51 +195,72 @@ def main(project_folder):
     genai_client = genai.Client(vertexai=True, project=project, location=location)
     vertexai.init(project=project, location=location)
 
-    latest_version = gcs_utils.get_latest_version_file(project_folder)
-    json_content = gcs_utils.read_json(bucket_name, project_folder + "json/" + latest_version)
-    scenes = json_content["scenes"]
-    prompts = []
-    for scene in scenes:
-        prompt = (
-        f"Scene {scene['scene_id']}: {scene['depiction']} "
-        f"Composition details: {scene['composition']['camera_angle']}, "
-        f"{scene['composition']['view']}, "
-        f"shot with {scene['composition']['focal_length']} lens, "
-        f"lighting: {scene['composition']['lighting']}, "
-        f"focus: {scene['composition']['focus']}.")
-        prompts.append(prompt)
-        
-    image_files = gcs_utils.list_images_in_folder(bucket_name, project_folder + "images/")
-    for i, filename in enumerate(image_files, start=1):
-        output_gcs_uri = "gs://" + bucket_name + "/" + project_folder + "videos/"
-        input_image = "gs://" + bucket_name + "/" + project_folder + "images/" + filename
-        generate_video_with_retry(i, input_image, prompts[i-1], output_gcs_uri, project_folder, genai_client)
-    
-    # 1. GCSから動画を取得
-    # 入力動画
+    videos_prefix = project_folder + "videos/"
+    images_prefix = project_folder + "images/"
+    json_prefix   = project_folder + "json/"
+
+    # --- num=0~3 の場合：映像生成のみ ---
+    if num in (0, 1, 2, 3):
+        latest_version = gcs_utils.get_latest_version_file(project_folder)
+        json_content = gcs_utils.read_json(bucket_name, json_prefix + latest_version)
+        scenes = json_content["scenes"]
+
+        prompts = []
+        for scene in scenes:
+            prompt = (
+                f"Scene {scene['scene_id']}: {scene['depiction']} "
+                f"Composition details: {scene['composition']['camera_angle']}, "
+                f"{scene['composition']['view']}, "
+                f"shot with {scene['composition']['focal_length']} lens, "
+                f"lighting: {scene['composition']['lighting']}, "
+                f"focus: {scene['composition']['focus']}."
+            )
+            prompts.append(prompt)
+
+        image_files = gcs_utils.list_images_in_folder(bucket_name, images_prefix)
+
+        if num >= len(image_files):
+            raise IndexError(f"images フォルダに num={num} 用のファイルがありません。")
+        if num >= len(prompts):
+            raise IndexError(f"scenes が num={num} に対応していません。")
+
+        video_index = num + 1
+        input_image_gcs = f"gs://{bucket_name}/{images_prefix}{image_files[num]}"
+        output_gcs_uri  = f"gs://{bucket_name}/{videos_prefix}"
+
+        generate_video_with_retry(
+            video_index,
+            input_image_gcs,
+            prompts[num],
+            output_gcs_uri,
+            project_folder,
+            genai_client
+        )
+
+        return "success"
+
+    # --- num=4 の場合：完成処理 ---
     VIDEO_FILES = [
         project_folder + "videos/1.mp4",
         project_folder + "videos/2.mp4",
         project_folder + "videos/3.mp4",
-        project_folder + "videos/4.mp4"
+        project_folder + "videos/4.mp4",
     ]
     local_video_paths = gcs_utils.download_videos(bucket_name, VIDEO_FILES)
 
-    # 2. 動画を結合
     merge_videos(local_video_paths, "no_bgm.mp4")
     gcs_utils.upload_to_gcs(bucket_name, "no_bgm.mp4", project_folder + "result/no_bgm.mp4")
-    
-    # 3. bgmを生成
+
     print("create_bgm start")
     prompt = make_bgm_prompt.make_prompt(bucket_name, project_folder + "json/story_script_akakura_en.json")
     print(prompt)
     generate_bgm.lyria(project_folder, prompt, "")
     print("create_bgm end")
-    
-    # 4. bgmをマージ
+
     print("merge bgm start")
     merge_bgm("no_bgm.mp4", "bgm.wav", "result.mp4")
     print("merge bgm end")
 
-    # 5. 結果をGCSにアップロード
     gcs_utils.upload_to_gcs(bucket_name, "result.mp4", project_folder + "result/result.mp4")
+
+    return "complete"
