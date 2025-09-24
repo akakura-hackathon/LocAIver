@@ -202,37 +202,60 @@ export default function StoryboardPage() {
   }
 
   async function createVideo() {
-    if (videoLoading || editLoading) return; // ✅ 並行実行の抑止
-    setVideoLoading(true);
-    setVideoCountdown(400); // ⭐️ 追加：400秒カウント開始
-    try {
-      const payload = {
-        project_folder: typeof window !== 'undefined' ? sessionStorage.getItem('projectFolder') : null,
-      };
+  if (videoLoading || editLoading) return; // ✅ 並行実行の抑止
+  setVideoLoading(true);
+  setVideoCountdown(600); // ⭐️ 600秒カウント開始
+
+  try {
+    const projectFolder =
+      typeof window !== 'undefined'
+        ? sessionStorage.getItem('projectFolder') ?? ""
+        : "";
+
+    const postVideo = async (num: number) => {
+      const payload = { project_folder: projectFolder, num };
       const res = await fetch('/api/video', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status} @ /api/video (num=${num})`);
+      return (await res.text()).trim();
+    };
 
-      const url = await res.text();
-      if (url && typeof window !== 'undefined') {
-        // ✅ ここを編集：ビデオページへ遷移
-        try { sessionStorage.setItem('videoUrl', url); } catch { }
-        // 比率は不明な場合が多いので指定しない（VideoPage 側で自動判定）
-        router.push(`/video?src=${encodeURIComponent(url)}`);
-      } else {
-        alert('URLが返ってきませんでした');
-      }
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      alert('映像作成に失敗しました: ' + msg);
-    } finally {
-      setVideoLoading(false);
-      setVideoCountdown(null); // ⭐️ 追加：カウントダウンクリア
+    // --- Step 1: num=0~3 を並列実行 ---
+    const results = await Promise.all([0, 1, 2, 3].map(postVideo));
+
+    // 全部 "success" か確認
+    const failed = results
+      .map((text, idx) => (text !== 'success' ? idx : -1))
+      .filter((v) => v !== -1);
+    if (failed.length > 0) {
+      throw new Error(`Pre-steps not "success" at num=${failed.join(', ')}`);
     }
+
+    // --- Step 2: num=4 を実行して URL を取得 ---
+    const url = await postVideo(4);
+
+    if (url && typeof window !== 'undefined') {
+      try {
+        sessionStorage.setItem('videoUrl', url);
+      } catch {}
+      router.push(`/video?src=${encodeURIComponent(url)}`);
+    } else {
+      alert('URLが返ってきませんでした');
+    }
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    alert('映像作成に失敗しました: ' + msg);
+  } finally {
+    setVideoLoading(false);
+    setVideoCountdown(null); // ⭐️ カウントダウンクリア
   }
+}
+
+
+
 
   const anyLoading = videoLoading || editLoading; // ✅ 共通ローディング状態
 

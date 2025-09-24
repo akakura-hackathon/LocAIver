@@ -10,7 +10,7 @@ export function debugOn() {
   return process.env.DEBUG_PROXY === '1';
 }
 
-export async function proxyJson(subpath: string, req: Request, timeoutMs = 600_000): Promise<Response> {
+export async function proxyJson(subpath: string, req: Request, timeoutMs = 3000_000): Promise<Response> {
   const base = getBase();
   if (!base) return Response.json({ error: 'bot_url_not_set' }, { status: 503 });
 
